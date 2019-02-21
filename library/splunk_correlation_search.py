@@ -36,35 +36,6 @@ options:
       - Add or remove a data source.
     required: true
     choices: [ "present", "absent" ]
-  splunk_username:
-    description:
-      - Splunk username with access to create data sources.
-    required: true
-  splunk_password:
-    description:
-      - Splunk password associated with provided C(splunk_username).
-    required: true
-  splunk_servername:
-    description:
-      - Splunk Server hostname associated with provided C(splunk_username) to make REST API calls against.
-    required: true
-  splunk_port:
-    description:
-      - TCP Port where Splunk is listening for REST API Calls.
-    default: 8089
-    type: int
-    required: false
-  splunk_scheme:
-    description:
-      - Protocol scheme to use when talking to Splunk.
-    default: https
-    required: false
-  validate_certs:
-    description:
-      - Validate SSL Certificates, if true this assumes C(splunk_scheme) is C(https).
-    default: True
-    type: bool
-    required: false
   search:
     description:
       - SPL search string
@@ -199,36 +170,33 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.urls import Request
 from ansible.module_utils.six.moves.urllib.parse import urlencode, quote_plus
 from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args, splunk_sanity_check, get_splunk_client, SPLUNK_COMMON_ARGSPEC
+from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args
 
 import copy
 
 def main():
 
-    argspec = copy.deepcopy(SPLUNK_COMMON_ARGSPEC)
-    argspec.update(
-        dict(
-            name=dict(required=True, type='str'),
-            description=dict(required=True, type='str'),
-            state=dict(choices=['present', 'absent'], required=True),
-            search=dict(required=True, type='str'),
-            app=dict(type="str", required=False, default="SplunkEnterpriseSecuritySuite"),
-            ui_dispatch_context=dict(type="str", required=False),
-            time_earliest=dict(type="str", required=False, default="-24h"),
-            time_latest=dict(type="str", required=False, default="now"),
-            cron_schedule=dict(type="str", required=False, default="*/5 * * * *"),
-            scheduling=dict(type="str", required=False, default="real-time", choices=["real-time", "continuous"]),
-            schedule_window=dict(type="str", required=False, default="0"),
-            schedule_priority=dict(type="str", required=False, default="Default", choices=["Default", "Higher", "Highest"]),
-            trigger_alert_when=dict(type="str", required=False, default="number of events",
-                                    choices=["number of events", "number of results", "number of hosts", "number of sources"]),
-            trigger_alert_when_condition=dict(type="str", required=False, default="greater than",
-                                    choices=["greater than", "less than", "equal to", "not equal to", "drops by", "rises by"]),
-            trigger_alert_when_value=dict(type="str", required=False, default="10"),
-            throttle_window_duration=dict(type="str", required=False),
-            throttle_fields_to_group_by=dict(type="str", required=False),
-            suppress_alert=dict(type=bool, required=False, default=False),
-        )
+    argspec = dict(
+        name=dict(required=True, type='str'),
+        description=dict(required=True, type='str'),
+        state=dict(choices=['present', 'absent'], required=True),
+        search=dict(required=True, type='str'),
+        app=dict(type="str", required=False, default="SplunkEnterpriseSecuritySuite"),
+        ui_dispatch_context=dict(type="str", required=False),
+        time_earliest=dict(type="str", required=False, default="-24h"),
+        time_latest=dict(type="str", required=False, default="now"),
+        cron_schedule=dict(type="str", required=False, default="*/5 * * * *"),
+        scheduling=dict(type="str", required=False, default="real-time", choices=["real-time", "continuous"]),
+        schedule_window=dict(type="str", required=False, default="0"),
+        schedule_priority=dict(type="str", required=False, default="Default", choices=["Default", "Higher", "Highest"]),
+        trigger_alert_when=dict(type="str", required=False, default="number of events",
+                                choices=["number of events", "number of results", "number of hosts", "number of sources"]),
+        trigger_alert_when_condition=dict(type="str", required=False, default="greater than",
+                                choices=["greater than", "less than", "equal to", "not equal to", "drops by", "rises by"]),
+        trigger_alert_when_value=dict(type="str", required=False, default="10"),
+        throttle_window_duration=dict(type="str", required=False),
+        throttle_fields_to_group_by=dict(type="str", required=False),
+        suppress_alert=dict(type=bool, required=False, default=False),
     )
 
     module = AnsibleModule(

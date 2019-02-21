@@ -31,35 +31,6 @@ options:
       - Add or remove a data source.
     required: true
     choices: [ "present", "absent" ]
-  splunk_username:
-    description:
-      - Splunk username with access to create data sources.
-    required: true
-  splunk_password:
-    description:
-      - Splunk password associated with provided C(splunk_username).
-    required: true
-  splunk_servername:
-    description:
-      - Splunk Server hostname associated with provided C(splunk_username) to make REST API calls against.
-    required: true
-  splunk_port:
-    description:
-      - TCP Port where Splunk is listening for REST API Calls.
-    default: 8089
-    type: int
-    required: false
-  splunk_scheme:
-    description:
-      - Protocol scheme to use when talking to Splunk.
-    default: https
-    required: false
-  validate_certs:
-    description:
-      - Validate SSL Certificates, if true this assumes C(splunk_scheme) is C(https).
-    default: True
-    type: bool
-    required: false
   blacklist:
     description:
       - Specify a regular expression for a file path. The file path that matches this regular expression is not indexed.
@@ -150,34 +121,31 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.urls import Request
 from ansible.module_utils.six.moves.urllib.parse import urlencode, quote_plus
 from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args, splunk_sanity_check, get_splunk_client, SPLUNK_COMMON_ARGSPEC
+from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args
 
 import copy
 
 def main():
 
-    argspec = copy.deepcopy(SPLUNK_COMMON_ARGSPEC)
-    argspec.update(
-        dict(
-            name=dict(required=True, type='str'),
-            state=dict(choices=['present', 'absent'], required=True),
-            blacklist=dict(required=False, type='str', default=None),
-            check_indexed=dict(required=False, type='bool', default=None),
-            check_path=dict(required=False, type='bool', default=None),
-            crc_salt=dict(required=False, type='str', default=None),
-            disabled=dict(required=False, type='str', default=None),
-            followTail=dict(required=False, type='str', default=None),
-            host=dict(required=False, type='str', default=None),
-            host_segment=dict(required=False, type='int', default=None),
-            host_regex=dict(required=False, type='int', default=None),
-            ignore_older_than=dict(required=False, type='str', default=None),
-            index=dict(required=False, type='str', default=None),
-            recursive=dict(required=False, type='str', default=None),
-            rename_source=dict(required=False, type='str', default=None),
-            sourcetype=dict(required=False, type='str', default=None),
-            time_before_close=dict(required=False, type='int', default=None),
-            whitelist=dict(required=False, type='str', default=None),
-        )
+    argspec = dict(
+        name=dict(required=True, type='str'),
+        state=dict(choices=['present', 'absent'], required=True),
+        blacklist=dict(required=False, type='str', default=None),
+        check_indexed=dict(required=False, type='bool', default=None),
+        check_path=dict(required=False, type='bool', default=None),
+        crc_salt=dict(required=False, type='str', default=None),
+        disabled=dict(required=False, type='str', default=None),
+        followTail=dict(required=False, type='str', default=None),
+        host=dict(required=False, type='str', default=None),
+        host_segment=dict(required=False, type='int', default=None),
+        host_regex=dict(required=False, type='int', default=None),
+        ignore_older_than=dict(required=False, type='str', default=None),
+        index=dict(required=False, type='str', default=None),
+        recursive=dict(required=False, type='str', default=None),
+        rename_source=dict(required=False, type='str', default=None),
+        sourcetype=dict(required=False, type='str', default=None),
+        time_before_close=dict(required=False, type='int', default=None),
+        whitelist=dict(required=False, type='str', default=None),
     )
 
     module = AnsibleModule(
@@ -206,12 +174,7 @@ def main():
     # This is where the splunk_* args are processed
     request_data = splunk_request.get_data()
 
-    try:
-        query_dict = splunk_request.get_by_path('servicesNS/nobody/search/data/inputs/monitor/{0}'.format(quote_plus(module.params['name'])))
-    except HTTPError as e:
-        # the data monitor doesn't exist
-        query_dict = {}
-
+    query_dict = splunk_request.get_by_path('servicesNS/nobody/search/data/inputs/monitor/{0}'.format(quote_plus(module.params['name'])))
 
     if module.params['state'] == 'present':
         if query_dict:

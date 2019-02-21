@@ -7,6 +7,8 @@ Mazer](https://github.com/ansible/mazer) goes stable and becomes the default
 means of distributing Ansible content this will be converted from a role into a
 Mazer Collection.
 
+### IN DEVELOPMENT: Note that at this time, this content requires the patch provided by [this Pull Request](https://github.com/ansible/ansible/pull/52761)
+
 Requirements
 ------------
 
@@ -25,18 +27,36 @@ None.
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+Using splunk modules are meant to be used with the [`httpapi` connection
+plugin](https://docs.ansible.com/ansible/latest/plugins/connection/httpapi.html)
+and as such we will set certain attributes in the inventory
 
-NOTE: `splunk_vars.yaml` should ideally be a vars file or an [Ansible
-Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) and in
-service of this example it needs to define three vars: `splunk_uname`,
-`splunk_pass`, `splunk_host`.
+Example `inventory.ini`:
+
+NOTE: The passwords should be stored in a secure location or an [Ansible
+Vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html)
+
+NOTE: the default port for Splunk's REST API is 8089
+
+
+    [splunk]
+    splunk.example.com
+
+    [splunk:vars]
+    ansible_network_os=splunk
+    ansible_user=admin
+    ansible_httpapi_pass=my_super_secret_admin_password
+    ansible_httpapi_port=8089
+    ansible_httpapi_use_ssl=yes
+    ansible_httpapi_validate_certs=True
+    ansible_connection=httpapi
+
+
+Example playbook:
 
     - name: demo splunk
-      hosts: localhost
+      hosts: splunk
       gather_facts: False
-      vars_files:
-        - splunk_vars.yaml
       tasks:
         - name: import the SplunkEnterpriseSecurity Role to access the modules
           import_role:
@@ -45,40 +65,24 @@ service of this example it needs to define three vars: `splunk_uname`,
           splunk_data_input_monitor:
             name: "/var/log/demo.log"
             state: "present"
-            splunk_username: "{{ splunk_uname }}"
-            splunk_password: "{{ splunk_pass }}"
-            splunk_servername: "{{ splunk_host }}"
-            validate_certs: False
             recursive: True
         - name: test splunk_data_input_network
           splunk_data_input_network:
             name: "9001"
             protocol: "tcp"
             state: "absent"
-            splunk_username: "{{ splunk_uname }}"
-            splunk_password: "{{ splunk_pass }}"
-            splunk_servername: "{{ splunk_host }}"
-            validate_certs: False
         - name: test splunk_coorelation_search
           splunk_correlation_search:
             name: "Test Demo Coorelation Search From Playbook"
             description: "Test Demo Coorelation Search From Playbook, description."
             search: 'source="/var/log/snort.log"'
             state: "present"
-            splunk_username: "{{ splunk_uname }}"
-            splunk_password: "{{ splunk_pass }}"
-            splunk_servername: "{{ splunk_host }}"
-            validate_certs: False
         - name: test splunk_adaptive_response_notable_event
           splunk_adaptive_response_notable_event:
             name: "Demo notable event from playbook"
             correlation_search_name: "Test Demo Coorelation Search From Playbook"
             description: "Test Demo notable event from playbook, description."
             state: "present"
-            splunk_username: "{{ splunk_uname }}"
-            splunk_password: "{{ splunk_pass }}"
-            splunk_servername: "{{ splunk_host }}"
-            validate_certs: False
             next_steps:
               - ping
               - nslookup

@@ -41,35 +41,6 @@ options:
       - Add or remove a data source.
     required: true
     choices: [ "present", "absent" ]
-  splunk_username:
-    description:
-      - Splunk username with access to create data sources.
-    required: true
-  splunk_password:
-    description:
-      - Splunk password associated with provided C(splunk_username).
-    required: true
-  splunk_servername:
-    description:
-      - Splunk Server hostname associated with provided C(splunk_username) to make REST API calls against.
-    required: true
-  splunk_port:
-    description:
-      - TCP Port where Splunk is listening for REST API Calls.
-    default: 8089
-    type: int
-    required: false
-  splunk_scheme:
-    description:
-      - Protocol scheme to use when talking to Splunk.
-    default: https
-    required: false
-  validate_certs:
-    description:
-      - Validate SSL Certificates, if true this assumes C(splunk_scheme) is C(https).
-    default: True
-    type: bool
-    required: false
   security_domain:
     description:
       - Splunk Security Domain
@@ -186,34 +157,31 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.urls import Request
 from ansible.module_utils.six.moves.urllib.parse import urlencode, quote_plus
 from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args, splunk_sanity_check, get_splunk_client, SPLUNK_COMMON_ARGSPEC
+from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args
 
 import copy
 import json
 
 def main():
 
-    argspec = copy.deepcopy(SPLUNK_COMMON_ARGSPEC)
-    argspec.update(
-        dict(
-            name=dict(required=True, type='str'),
-            correlation_search_name=dict(required=True, type='str'),
-            description=dict(required=True, type='str'),
-            state=dict(choices=['present', 'absent'], required=True),
-            security_domain=dict(choices=['access', 'endpoint', 'network', 'threat', 'identity', 'audit'], required=False, default='threat'),
-            severity=dict(choices=['informational', 'low', 'medium', 'high', 'critical', 'unknown'], required=False, default='high'),
-            default_owner=dict(required=False, type='str'),
-            default_status=dict(choices=['unassigned', 'new', 'in progress', 'pending', 'resolved', 'closed', ''], required=False, default=''),
-            drill_down_name=dict(required=False, type='str'),
-            drill_down_search=dict(required=False, type='str'),
-            drill_down_earliest_offset=dict(required=False, type='str', default='$info_min_time$'),
-            drill_down_latest_offset=dict(required=False, type='str', default='$info_max_time$'),
-            investigation_profiles=dict(required=False, type='str'),
-            next_steps=dict(required=False, type='list', default=[]),
-            recommended_actions=dict(required=False, type='list', default=[]),
-            asset_extraction=dict(required=False, type='list', default=['src', 'dest', 'dvc', 'orig_host'], choices=['src', 'dest', 'dvc', 'orig_host']),
-            identity_extraction=dict(required=False, type='list', default=['user', 'src_user'], choices=['user', 'src_user']),
-        )
+    argspec = dict(
+        name=dict(required=True, type='str'),
+        correlation_search_name=dict(required=True, type='str'),
+        description=dict(required=True, type='str'),
+        state=dict(choices=['present', 'absent'], required=True),
+        security_domain=dict(choices=['access', 'endpoint', 'network', 'threat', 'identity', 'audit'], required=False, default='threat'),
+        severity=dict(choices=['informational', 'low', 'medium', 'high', 'critical', 'unknown'], required=False, default='high'),
+        default_owner=dict(required=False, type='str'),
+        default_status=dict(choices=['unassigned', 'new', 'in progress', 'pending', 'resolved', 'closed', ''], required=False, default=''),
+        drill_down_name=dict(required=False, type='str'),
+        drill_down_search=dict(required=False, type='str'),
+        drill_down_earliest_offset=dict(required=False, type='str', default='$info_min_time$'),
+        drill_down_latest_offset=dict(required=False, type='str', default='$info_max_time$'),
+        investigation_profiles=dict(required=False, type='str'),
+        next_steps=dict(required=False, type='list', default=[]),
+        recommended_actions=dict(required=False, type='list', default=[]),
+        asset_extraction=dict(required=False, type='list', default=['src', 'dest', 'dvc', 'orig_host'], choices=['src', 'dest', 'dvc', 'orig_host']),
+        identity_extraction=dict(required=False, type='list', default=['user', 'src_user'], choices=['user', 'src_user']),
     )
 
     module = AnsibleModule(
@@ -227,17 +195,11 @@ def main():
         not_rest_data_keys=['state']
     )
 
-    try:
-        query_dict = splunk_request.get_by_path(
-            'servicesNS/nobody/SplunkEnterpriseSecuritySuite/saved/searches/{0}'.format(
-                quote_plus(module.params['correlation_search_name'])
-            )
+    query_dict = splunk_request.get_by_path(
+        'servicesNS/nobody/SplunkEnterpriseSecuritySuite/saved/searches/{0}'.format(
+            quote_plus(module.params['correlation_search_name'])
         )
-    except HTTPError as e:
-        # the data monitor doesn't exist
-        query_dict = {}
-
-
+    )
 
     # Have to custom craft the data here because they overload the saved searches
     # endpoint in the rest api and we want to hide the nuance from the user

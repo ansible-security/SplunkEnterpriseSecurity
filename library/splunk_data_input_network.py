@@ -21,35 +21,6 @@ description:
   - This module allows for addition or deletion of TCP and UDP Data Inputs in Splunk.
 version_added: "2.8"
 options:
-  splunk_username:
-    description:
-      - Splunk username with access to create data sources.
-    required: true
-  splunk_password:
-    description:
-      - Splunk password associated with provided C(splunk_username).
-    required: true
-  splunk_servername:
-    description:
-      - Splunk Server hostname associated with provided C(splunk_username) to make REST API calls against.
-    required: true
-  splunk_port:
-    description:
-      - TCP Port where Splunk is listening for REST API Calls.
-    default: 8089
-    type: int
-    required: false
-  splunk_scheme:
-    description:
-      - Protocol scheme to use when talking to Splunk.
-    default: https
-    required: false
-  validate_certs:
-    description:
-      - Validate SSL Certificates, if true this assumes C(splunk_scheme) is C(https).
-    default: True
-    type: bool
-    required: false
   protocol:
     description:
       - Choose between tcp or udp
@@ -142,29 +113,26 @@ from ansible.module_utils._text import to_text
 from ansible.module_utils.urls import Request
 from ansible.module_utils.six.moves.urllib.parse import urlencode, quote_plus
 from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args, splunk_sanity_check, get_splunk_client, SPLUNK_COMMON_ARGSPEC
+from ansible.module_utils.splunk import SplunkRequest, parse_splunk_args
 
 import copy
 
 def main():
 
-    argspec = copy.deepcopy(SPLUNK_COMMON_ARGSPEC)
-    argspec.update(
-        dict(
-            state=dict(required=False, choices=[ 'present', 'absent', 'enabled', 'disable' ], default='present', type='str'),
-            connection_host=dict(required=False, choices=['ip', 'dns', 'none'], default='none', type='str'),
-            host=dict(required=False, type='str', default=None),
-            index=dict(required=False, type='str', default=None),
-            name=dict(required=True, type='str'),
-            protocol=dict(required=True, type='str', choices=['tcp', 'udp']),
-            queue=dict(required=False, type='str', choices=['parsingQueue', 'indexQueue'], default='parsingQueue'),
-            rawTcpDoneTimeout=dict(required=False, type='int', default=10),
-            restrictToHost=dict(required=False, type='str', default=None),
-            ssl=dict(required=False, type='bool', default=None),
-            source=dict(required=False, type='str', default=None),
-            sourcetype=dict(required=False, type='str', default=None),
-            datatype=dict(required=False, choices=[ "cooked", "raw" ], default="raw")
-        )
+    argspec = dict(
+        state=dict(required=False, choices=[ 'present', 'absent', 'enabled', 'disable' ], default='present', type='str'),
+        connection_host=dict(required=False, choices=['ip', 'dns', 'none'], default='none', type='str'),
+        host=dict(required=False, type='str', default=None),
+        index=dict(required=False, type='str', default=None),
+        name=dict(required=True, type='str'),
+        protocol=dict(required=True, type='str', choices=['tcp', 'udp']),
+        queue=dict(required=False, type='str', choices=['parsingQueue', 'indexQueue'], default='parsingQueue'),
+        rawTcpDoneTimeout=dict(required=False, type='int', default=10),
+        restrictToHost=dict(required=False, type='str', default=None),
+        ssl=dict(required=False, type='bool', default=None),
+        source=dict(required=False, type='str', default=None),
+        sourcetype=dict(required=False, type='str', default=None),
+        datatype=dict(required=False, choices=[ "cooked", "raw" ], default="raw")
     )
 
     module = AnsibleModule(
@@ -180,18 +148,13 @@ def main():
     # This is where the splunk_* args are processed
     request_data = splunk_request.get_data()
 
-    try:
-        query_dict = splunk_request.get_by_path(
-            'servicesNS/nobody/search/data/inputs/{0}/{1}/{2}'.format(
-                quote_plus(module.params['protocol']),
-                quote_plus(module.params['datatype']),
-                quote_plus(module.params['name']),
-            )
+    query_dict = splunk_request.get_by_path(
+        'servicesNS/nobody/search/data/inputs/{0}/{1}/{2}'.format(
+            quote_plus(module.params['protocol']),
+            quote_plus(module.params['datatype']),
+            quote_plus(module.params['name']),
         )
-    except HTTPError as e:
-        # the data input doesn't exist
-        query_dict = {}
-
+    )
 
     if module.params['state'] in ['present', 'enabled', 'disabled']:
         _data = splunk_request.get_data()
